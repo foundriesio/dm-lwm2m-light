@@ -39,6 +39,7 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select SENSOR
 	select TEMP_NRF5
 	select TEST_RANDOM_GENERATOR
+	select PWM_NRF5_SW
 	default n
 
 config FOTA_LED_GPIO_INVERTED
