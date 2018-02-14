@@ -109,6 +109,11 @@ static void set_bluetooth_led(bool state)
 	gpio = device_get_binding(BT_GPIO_PORT);
 	gpio_pin_configure(gpio, BT_GPIO_PIN, GPIO_DIR_OUT);
 	gpio_pin_write(gpio, BT_GPIO_PIN, state);
+#elif defined(LED0_GPIO_PIN) && defined(LED0_GPIO_PORT)
+	/* Use LED0 in case there is no dedicated LED for BT */
+	struct device *gpio = device_get_binding(LED0_GPIO_PORT);
+	gpio_pin_configure(gpio, LED0_GPIO_PIN, GPIO_DIR_OUT);
+	gpio_pin_write(gpio, LED0_GPIO_PIN, state);
 #endif
 }
 
