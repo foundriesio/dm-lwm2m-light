@@ -9,6 +9,10 @@ config ZEPHYR_BASE
 	string
 	option env="ZEPHYR_BASE"
 
+config APPLICATION_BASE
+	string
+	option env="PROJECT_BASE"
+
 source "$ZEPHYR_BASE/Kconfig.zephyr"
 
 config FOTA_DEVICE
@@ -35,6 +39,7 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select SENSOR
 	select TEMP_NRF5
 	select TEST_RANDOM_GENERATOR
+	select PWM_NRF5_SW
 	default n
 
 config FOTA_LED_GPIO_INVERTED
@@ -66,3 +71,5 @@ config SYS_LOG_FOTA_LEVEL
 	  - 2 WARNING: write SYS_LOG_WRN in addition to previous level
 	  - 3 INFO: write SYS_LOG_INF in addition to previous levels
 	  - 4 DEBUG: write SYS_LOG_DBG in addition to previous levels
+
+source "$APPLICATION_BASE/Kconfig.app"

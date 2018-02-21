@@ -97,7 +97,7 @@ void main(void)
 	tstamp_hook_install();
 	app_wq_init();
 
-	SYS_LOG_INF("Open Source Foundries FOTA LWM2M example application");
+	SYS_LOG_INF("LWM2M Smart Light Bulb");
 	SYS_LOG_INF("Device: %s, Serial: %x",
 		    product_id_get()->name, product_id_get()->number);
 

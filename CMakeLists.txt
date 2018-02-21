@@ -1,5 +1,7 @@
 # This application has its own Kconfig options.
 set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
+# Kconfig.app needs APPLICATION_BASE
+set(ENV{PROJECT_BASE} ${CMAKE_SOURCE_DIR})
 
 # CONF_FILE is prj.conf, plus (in addition to, not or) the following, if they
 # exist:
