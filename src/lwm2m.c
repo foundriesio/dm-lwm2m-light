@@ -21,6 +21,9 @@
 #include <version.h>
 #include <board.h>
 #include <tc_util.h>
+#if defined(CONFIG_MODEM_RECEIVER)
+#include <drivers/modem/modem_receiver.h>
+#endif
 
 #include "product_id.h"
 #include "lwm2m_credentials.h"
@@ -350,10 +353,26 @@ static int lwm2m_setup(void)
 	if (ret) {
 		SYS_LOG_ERR("Fail to read LWM2M Device ID");
 	}
+#if defined(CONFIG_MODEM_RECEIVER)
+	/* use IMEI */
+	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
+		struct mdm_receiver_context *mdm_ctx;
+
+		mdm_ctx = mdm_receiver_context_from_id(0);
+		if (mdm_ctx && mdm_ctx->data_imei) {
+			memset(ep_name, 0, sizeof(ep_name));
+			SYS_LOG_WRN("LWM2M Device ID not set, using IMEI");
+			snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:imei:%s",
+				 mdm_ctx->data_imei);
+			ret = 0;
+		}
+	}
+#endif
 	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
 		/* No UUID, use the serial number instead */
 		SYS_LOG_WRN("LWM2M Device ID not set, using serial number");
-		strncpy(ep_name, device_serial_no, LWM2M_DEVICE_ID_SIZE);
+		snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:sn:%s",
+			 device_serial_no);
 	}
 	SYS_LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
 
@@ -468,61 +487,6 @@ static void rd_client_event(struct lwm2m_ctx *client,
 		break;
 
 	}
-}
-
-static void event_iface_up(struct net_mgmt_event_callback *cb,
-		u32_t mgmt_event, struct net_if *iface)
-{
-	int ret;
-
-	if (!iface) {
-		SYS_LOG_ERR("No network interface specified!");
-		return;
-	}
-
-	memset(&app_ctx, 0x0, sizeof(app_ctx));
-	app_ctx.net_init_timeout = WAIT_TIME;
-	app_ctx.net_timeout = CONNECT_TIME;
-#if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
-	app_ctx.tx_slab = tx_udp_slab;
-	app_ctx.data_pool = data_udp_pool;
-#endif
-
-	/* small delay to finalize networking */
-	k_sleep(K_SECONDS(2));
-	TC_PRINT("LwM2M registration\n");
-
-#if defined(CONFIG_NET_APP_DTLS)
-	app_ctx.client_psk = client_psk_bin;
-	app_ctx.client_psk_len = LWM2M_DEVICE_TOKEN_HEX_SIZE;
-	app_ctx.client_psk_id = ep_name;
-	app_ctx.client_psk_id_len = strlen(ep_name);
-	app_ctx.cert_host = HOSTNAME;
-	app_ctx.dtls_pool = &dtls_pool;
-	app_ctx.dtls_result_buf = dtls_result;
-	app_ctx.dtls_result_buf_len = RESULT_BUF_SIZE;
-	app_ctx.dtls_stack = net_app_dtls_stack;
-	app_ctx.dtls_stack_len = K_THREAD_STACK_SIZEOF(net_app_dtls_stack);
-#endif /* CONFIG_NET_APP_DTLS */
-
-#if defined(CONFIG_NET_IPV6)
-	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, ep_name,
-				    rd_client_event);
-#elif defined(CONFIG_NET_IPV4)
-	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV4_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, ep_name,
-				    rd_client_event);
-#else
-	SYS_LOG_ERR("LwM2M client requires IPv4 or IPv6.");
-	return;
-#endif
-	if (ret < 0) {
-		SYS_LOG_ERR("LWM2M RD client error (%d)", ret);
-		return;
-	}
-
-	SYS_LOG_INF("setup complete.");
 }
 
 /* Log the semantic version number of the current image. */
@@ -660,10 +624,15 @@ static void lwm2m_reg_update_result(struct k_work *work)
 	tc_logging = false;
 }
 
-int lwm2m_init(void)
+static void event_iface_up(struct net_mgmt_event_callback *cb,
+		u32_t mgmt_event, struct net_if *iface)
 {
-	struct net_if *iface;
 	int ret;
+
+	if (!iface) {
+		SYS_LOG_ERR("No network interface specified!");
+		return;
+	}
 
 	TC_START("LwM2M tests");
 
@@ -673,7 +642,7 @@ int lwm2m_init(void)
 		SYS_LOG_ERR("Failed to setup image properties (%d)", ret);
 		_TC_END_RESULT(TC_FAIL, "lwm2m_image_init");
 		TC_END_REPORT(TC_FAIL);
-		return ret;
+		return;
 	}
 	_TC_END_RESULT(TC_PASS, "lwm2m_image_init");
 
@@ -683,15 +652,7 @@ int lwm2m_init(void)
 		SYS_LOG_ERR("Cannot setup LWM2M fields (%d)", ret);
 		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
 		TC_END_REPORT(TC_FAIL);
-		return ret;
-	}
-
-	iface = net_if_get_default();
-	if (!iface) {
-		SYS_LOG_ERR("Cannot find default network interface!");
-		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
-		TC_END_REPORT(TC_FAIL);
-		return -ENETDOWN;
+		return;
 	}
 	_TC_END_RESULT(TC_PASS, "lwm2m_setup");
 
@@ -700,6 +661,63 @@ int lwm2m_init(void)
 	k_work_init(&update_data.tc_work, lwm2m_reg_update_result);
 	update_data.tc_count = 0;
 	tc_logging = true;
+
+	memset(&app_ctx, 0x0, sizeof(app_ctx));
+	app_ctx.net_init_timeout = WAIT_TIME;
+	app_ctx.net_timeout = CONNECT_TIME;
+#if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
+	app_ctx.tx_slab = tx_udp_slab;
+	app_ctx.data_pool = data_udp_pool;
+#endif
+
+	/* small delay to finalize networking */
+	k_sleep(K_SECONDS(2));
+	TC_PRINT("LwM2M registration\n");
+
+#if defined(CONFIG_NET_APP_DTLS)
+	app_ctx.client_psk = client_psk_bin;
+	app_ctx.client_psk_len = LWM2M_DEVICE_TOKEN_HEX_SIZE;
+	app_ctx.client_psk_id = ep_name;
+	app_ctx.client_psk_id_len = strlen(ep_name);
+	app_ctx.cert_host = HOSTNAME;
+	app_ctx.dtls_pool = &dtls_pool;
+	app_ctx.dtls_result_buf = dtls_result;
+	app_ctx.dtls_result_buf_len = RESULT_BUF_SIZE;
+	app_ctx.dtls_stack = net_app_dtls_stack;
+	app_ctx.dtls_stack_len = K_THREAD_STACK_SIZEOF(net_app_dtls_stack);
+#endif /* CONFIG_NET_APP_DTLS */
+
+#if defined(CONFIG_NET_IPV6)
+	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
+				    CONFIG_LWM2M_PEER_PORT, ep_name,
+				    rd_client_event);
+#elif defined(CONFIG_NET_IPV4)
+	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV4_ADDR,
+				    CONFIG_LWM2M_PEER_PORT, ep_name,
+				    rd_client_event);
+#else
+	SYS_LOG_ERR("LwM2M client requires IPv4 or IPv6.");
+	return;
+#endif
+	if (ret < 0) {
+		SYS_LOG_ERR("LWM2M RD client error (%d)", ret);
+		return;
+	}
+
+	SYS_LOG_INF("setup complete.");
+}
+
+int lwm2m_init(void)
+{
+	struct net_if *iface;
+
+	iface = net_if_get_default();
+	if (!iface) {
+		SYS_LOG_ERR("Cannot find default network interface!");
+		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
+		TC_END_REPORT(TC_FAIL);
+		return -ENETDOWN;
+	}
 
 	/* Subscribe to NET_EVENT_IF_UP if interface is not ready */
 	if (!net_if_is_up(iface)) {

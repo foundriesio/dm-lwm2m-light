@@ -20,41 +20,19 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/storage.h>
 #include <bluetooth/conn.h>
 
 #include "product_id.h"
 
-/* Any by default, can change depending on the hardware implementation */
-static bt_addr_le_t bt_addr;
+/* Defines for the LED elements */
+#define LED_GPIO_PIN          LED0_GPIO_PIN
+#if defined(LED0_GPIO_PORT)
+#define LED_GPIO_PORT         LED0_GPIO_PORT
+#else
+#define LED_GPIO_PORT         LED0_GPIO_CONTROLLER
+#endif
 
-static ssize_t storage_read(const bt_addr_le_t *addr, u16_t key, void *data,
-			       size_t length)
-{
-	if (addr) {
-		return -ENOENT;
-	}
-
-	if (key == BT_STORAGE_ID_ADDR && length == sizeof(bt_addr)) {
-		bt_addr_le_copy(data, &bt_addr);
-		return sizeof(bt_addr);
-	}
-
-	return -EIO;
-}
-
-static ssize_t storage_write(const bt_addr_le_t *addr, u16_t key,
-				const void *data, size_t length)
-{
-	return -ENOSYS;
-}
-
-static ssize_t storage_clear(const bt_addr_le_t *addr)
-{
-	return -ENOSYS;
-}
-
-static void set_own_bt_addr(void)
+static void set_own_bt_addr(bt_addr_le_t *addr)
 {
 	int i;
 	u8_t tmp;
@@ -64,10 +42,10 @@ static void set_own_bt_addr(void)
 	 */
 	for (i = 0; i < 4; i++) {
 		tmp = (product_id_get()->number >> i * 8) & 0xff;
-		bt_addr.a.val[i] = tmp;
+		addr->a.val[i] = tmp;
 	}
 
-	bt_addr.a.val[4] = 0xe7;
+	addr->a.val[4] = 0xe7;
 /*
  * For CONFIG_NET_L2_BT_ZEP1656, the U/L bit of the BT MAC is toggled by Zephyr.
  * Later that MAC is used to create the 6LOWPAN IPv6 address.  To account for
@@ -75,29 +53,10 @@ static void set_own_bt_addr(void)
  * gateway configuration for bt0).
  */
 #if defined(CONFIG_NET_L2_BT_ZEP1656)
-	bt_addr.a.val[5] = 0xd6;
+	addr->a.val[5] = 0xd6;
 #else
-	bt_addr.a.val[5] = 0xd4;
+	addr->a.val[5] = 0xd4;
 #endif
-}
-
-static int bt_storage_init(void)
-{
-	static const struct bt_storage storage = {
-		.read = storage_read,
-		.write = storage_write,
-		.clear = storage_clear,
-	};
-
-	bt_addr.type = BT_ADDR_LE_RANDOM;
-
-	set_own_bt_addr();
-
-	bt_storage_register(&storage);
-
-	SYS_LOG_DBG("Bluetooth storage driver registered");
-
-	return 0;
 }
 
 /* BT LE Connect/Disconnect callbacks */
@@ -109,11 +68,11 @@ static void set_bluetooth_led(bool state)
 	gpio = device_get_binding(BT_GPIO_PORT);
 	gpio_pin_configure(gpio, BT_GPIO_PIN, GPIO_DIR_OUT);
 	gpio_pin_write(gpio, BT_GPIO_PIN, state);
-#elif defined(LED0_GPIO_PIN) && defined(LED0_GPIO_PORT)
+#elif defined(LED_GPIO_PIN) && defined(LED_GPIO_PORT)
 	/* Use LED0 in case there is no dedicated LED for BT */
-	struct device *gpio = device_get_binding(LED0_GPIO_PORT);
-	gpio_pin_configure(gpio, LED0_GPIO_PIN, GPIO_DIR_OUT);
-	gpio_pin_write(gpio, LED0_GPIO_PIN, state);
+	struct device *gpio = device_get_binding(LED_GPIO_PORT);
+	gpio_pin_configure(gpio, LED_GPIO_PIN, GPIO_DIR_OUT);
+	gpio_pin_write(gpio, LED_GPIO_PIN, state);
 #endif
 }
 
@@ -141,11 +100,19 @@ static struct bt_conn_cb conn_callbacks = {
 
 static int bt_network_init(struct device *dev)
 {
+	bt_addr_le_t bt_addr;
+	int ret = 0;
+
 	/* Storage used to provide a BT MAC based on the serial number */
 	SYS_LOG_DBG("Setting Bluetooth MAC\n");
-	bt_storage_init();
+
+	memset(&bt_addr, 0, sizeof(bt_addr_le_t));
+	bt_addr.type = BT_ADDR_LE_RANDOM;
+	set_own_bt_addr(&bt_addr);
+	ret = bt_set_id_addr(&bt_addr);
 	bt_conn_cb_register(&conn_callbacks);
-	return 0;
+
+	return ret;
 }
 
 /* last priority in the POST_KERNEL init levels */
