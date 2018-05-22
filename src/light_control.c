@@ -190,7 +190,11 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 
 	led_val = *data;
 	if (led_val) {
-		dimmer = lwm2m_engine_get_u8("3311/0/5851");
+		ret = lwm2m_engine_get_u8("3311/0/5851", &dimmer);
+		if (ret) {
+			SYS_LOG_ERR("Failed to update light state");
+			return ret;
+		}
 	}
 
 	ret = update_pwm(color_rgb, dimmer);
@@ -242,9 +246,19 @@ static int color_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 					color_rgb[1], color_rgb[2]);
 
 	/* Update PWM output if light is 'on' */
-	on_off = lwm2m_engine_get_bool("3311/0/5850");
+	ret = lwm2m_engine_get_bool("3311/0/5850", &on_off);
+	if (ret) {
+		SYS_LOG_ERR("Failed to get on_off");
+		return ret;
+	}
+
 	if (on_off) {
-		dimmer = lwm2m_engine_get_u8("3311/0/5851");
+		ret = lwm2m_engine_get_u8("3311/0/5851", &dimmer);
+		if (ret) {
+			SYS_LOG_ERR("Failed to get dimmer");
+			return ret;
+		}
+
 		ret = update_pwm(color_rgb, dimmer);
 		if (ret) {
 			SYS_LOG_ERR("Failed to update color");
@@ -275,7 +289,12 @@ static int dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	}
 
 	/* Update PWM output if light is 'on' */
-	on_off = lwm2m_engine_get_bool("3311/0/5850");
+	ret = lwm2m_engine_get_bool("3311/0/5850", &on_off);
+	if (ret) {
+		SYS_LOG_ERR("Failed to get on_off");
+		return ret;
+	}
+
 	if (on_off) {
 		ret = update_pwm(color_rgb, dimmer);
 		if (ret) {
