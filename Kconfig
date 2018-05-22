@@ -70,4 +70,4 @@ config SYS_LOG_FOTA_LEVEL
 	  - 3 INFO: write SYS_LOG_INF in addition to previous levels
 	  - 4 DEBUG: write SYS_LOG_DBG in addition to previous levels
 
-source "$APPLICATION_BASE/Kconfig.app"
+source "$PROJECT_BASE/Kconfig.app"
