@@ -15,7 +15,6 @@
 #include <pwm.h>
 #include <net/lwm2m.h>
 
-#include "lwm2m.h"
 
 /* Color Unit used by the IPSO object */
 #define COLOR_UNIT	"hex"
@@ -89,10 +88,6 @@ static int update_pwm(u8_t *color_rgb, u8_t dimmer)
 	int i, ret = 0;
 
 	memcpy(&rgb, color_rgb, 3);
-
-	if (dimmer < 0) {
-		dimmer = 0;
-	}
 
 	if (dimmer > 100) {
 		dimmer = 100;
@@ -278,11 +273,6 @@ static int dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	u8_t dimmer;
 
 	dimmer = *data;
-	if (dimmer < 0) {
-		SYS_LOG_ERR("Invalid dimmer value, forcing it to 0");
-		dimmer = 0;
-	}
-
 	if (dimmer > 100) {
 		SYS_LOG_ERR("Invalid dimmer value, forcing it to 100");
 		dimmer = 100;
