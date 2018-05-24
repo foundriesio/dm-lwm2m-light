@@ -189,3 +189,21 @@ int init_light_control(void)
 fail:
 	return ret;
 }
+
+int light_control_flash(u8_t r, u8_t g, u8_t b, s32_t duration)
+{
+	int ret;
+
+	k_sem_take(&ilc_sem, K_FOREVER);
+	if (!ilc) {
+		SYS_LOG_ERR("no light registered but flash called");
+		ret = -ENODEV;
+	} else if (!ilc->flash) {
+		SYS_LOG_WRN("light control object doesn't support flashing");
+		ret = -EINVAL;
+	} else {
+		ret = ilc->flash(ilc, r, g, b, duration);
+	}
+	k_sem_give(&ilc_sem);
+	return ret;
+}

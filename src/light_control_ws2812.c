@@ -210,6 +210,38 @@ static int light_control_ws2812_color_cb(struct ipso_light_ctl *ilc,
 	return ret;
 }
 
+static int light_control_ws2812_flash(struct ipso_light_ctl *ilc,
+				      u8_t r, u8_t g, u8_t b, s32_t duration)
+{
+	struct ws2812_data *data = ilc->data;
+	struct led_rgb cache;
+	u8_t dimmer;
+	int ret;
+
+	ret = ilc_get_dimmer(ilc, &dimmer);
+	if (ret) {
+		return ret;
+	}
+
+	memcpy(&cache, &data->color, sizeof(struct led_rgb));
+	data->color.r = r;
+	data->color.g = g;
+	data->color.b = b;
+	ret = light_control_ws2812_update(ilc, dimmer);
+	if (ret) {
+		goto fail;
+	}
+	k_sleep(duration);
+	memcpy(&data->color, &cache, sizeof(struct led_rgb));
+	ret = light_control_ws2812_update(ilc, dimmer);
+	return ret;
+
+fail:
+	memcpy(&data->color, &cache, sizeof(struct led_rgb));
+	(void)light_control_ws2812_update(ilc, dimmer);
+	return ret;
+}
+
 static struct ws2812_data data;
 
 static struct ipso_light_ctl ilc_ws2812 = {
@@ -218,6 +250,7 @@ static struct ipso_light_ctl ilc_ws2812 = {
 	.on_off_cb = light_control_ws2812_on_off_cb,
 	.dimmer_cb = light_control_ws2812_dimmer_cb,
 	.color_cb = light_control_ws2812_color_cb,
+	.flash = light_control_ws2812_flash,
 	.data = &data,
 };
 
@@ -233,4 +266,4 @@ static int light_control_register_ws2812(struct device *dev)
 }
 
 SYS_INIT(light_control_register_ws2812, APPLICATION,
-	 CONFIG_APPLICATION_INIT_PRIORITY);
+	 CONFIG_KERNEL_INIT_PRIORITY_DEVICE);

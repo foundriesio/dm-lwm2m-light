@@ -9,5 +9,6 @@
 #define __FOTA_LIGHT_CONTROL_H__
 
 int init_light_control(void);
+int light_control_flash(u8_t r, u8_t g, u8_t b, s32_t duration);
 
 #endif	/* __FOTA_LIGHT_CONTROL_H__ */

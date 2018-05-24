@@ -56,6 +56,10 @@ struct ipso_light_ctl {
 	/** This is invoked when color resource is written. */
 	int (*color_cb)(struct ipso_light_ctl *, char *color, u16_t color_len);
 
+	/** System hook for flashing an RGB color, if supported. */
+	int (*flash)(struct ipso_light_ctl *, u8_t r, u8_t g, u8_t b,
+		     s32_t duration);
+
 	/**
 	 * Buffer for resource paths.
 	 *
