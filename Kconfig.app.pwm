@@ -35,7 +35,7 @@ comment "Options for red color channel"
 config APP_PWM_RED
 	bool
 	prompt "Enable dedicated PWM for red"
-	default n
+	default y
 
 if APP_PWM_RED
 
@@ -61,7 +61,7 @@ comment "Options for green color channel"
 config APP_PWM_GREEN
 	bool
 	prompt "Enable dedicated PWM for green"
-	default n
+	default y
 
 if APP_PWM_GREEN
 
@@ -87,7 +87,7 @@ comment "Options for blue color channel"
 config APP_PWM_BLUE
 	bool
 	prompt "Enable dedicated PWM for blue"
-	default n
+	default y
 
 if APP_PWM_BLUE
 

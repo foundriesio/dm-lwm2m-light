@@ -7,10 +7,12 @@
 # Selector for what type of light this is.
 choice APP_LIGHT_TYPE
 	prompt "Type of lighting technology which is in use"
-	default APP_LIGHT_TYPE_PWM
+	default APP_LIGHT_TYPE_WS2812
 
 config APP_LIGHT_TYPE_PWM
 	bool "LEDs with PWM brightness"
+	select PWM
+	select PWM_NRF5_SW
 	help
 	  Select this option to use this application with up to four
 	  LEDs (supporting red, green, blue, and white color channels, but

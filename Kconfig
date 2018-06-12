@@ -37,7 +37,6 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select NET_CONFIG_BT_NODE
 	select SENSOR
 	select TEMP_NRF5
-	select PWM_NRF5_SW
 	select ENTROPY_NRF5_RNG
 	default n
 
