@@ -16,6 +16,7 @@
  * TODO: support multiple instances.
  */
 static struct ipso_light_ctl *ilc;
+static K_SEM_DEFINE(ilc_sem, 1, 1);
 
 static u8_t char_to_nibble(char c)
 {
@@ -81,23 +82,27 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	bool on;
 	int ret = 0;
 
+	k_sem_take(&ilc_sem, K_FOREVER);
+
 	if (data_len != 1) {
 		SYS_LOG_ERR("Length of on_off callback data incorrect! (%u)",
 			    data_len);
-		return -EINVAL;
+		goto out;
 	}
 
 	on = *data;
 
 	ret = ilc->on_off_cb(ilc, on);
 	if (ret) {
-		return ret;
+		goto out;
 	}
 
 	if (!on) {
 		ret = ilc_set_on_time(ilc, 0);
 	}
 
+out:
+	k_sem_give(&ilc_sem);
 	return ret;
 }
 
@@ -106,6 +111,9 @@ static int dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 		     bool last_block, size_t total_size)
 {
 	u8_t dimmer = *data;
+	int ret;
+
+	k_sem_take(&ilc_sem, K_FOREVER);
 
 	if (dimmer > 100) {
 		SYS_LOG_ERR("Invalid dimmer value %u, forcing it to 100",
@@ -113,14 +121,23 @@ static int dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 		dimmer = 100;
 	}
 
-	return ilc->dimmer_cb(ilc, dimmer);
+	ret = ilc->dimmer_cb(ilc, dimmer);
+
+	k_sem_give(&ilc_sem);
+	return ret;
 }
 
 /* TODO: Move to a pre write hook that can handle ret codes once available */
 static int color_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 		    bool last_block, size_t total_size)
 {
-	return ilc->color_cb(ilc, (char *)data, data_len);
+	int ret;
+
+	k_sem_take(&ilc_sem, K_FOREVER);
+	ret = ilc->color_cb(ilc, (char *)data, data_len);
+	k_sem_give(&ilc_sem);
+
+	return ret;
 }
 
 int init_light_control(void)
