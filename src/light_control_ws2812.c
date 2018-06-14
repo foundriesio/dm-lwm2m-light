@@ -26,6 +26,9 @@
 /* Initial dimmer value (%) */
 #define DIMMER_INITIAL		25
 
+/* Is the light initially on? */
+#define ON_INITIAL              true
+
 struct ws2812_data {
 	struct device *ws2812;
 	struct led_rgb ws2812_buf[WS2812_NUM_LEDS];
@@ -106,9 +109,9 @@ static int light_control_ws2812_post_init(struct ipso_light_ctl *ilc)
 		return ret;
 	}
 
-	/* Set initial light state based on DIMMER_INITIAL */
-	if (DIMMER_INITIAL) {
-		ilc_set_onoff(ilc, true);
+	ret = ilc_set_onoff(ilc, ON_INITIAL);
+	if (ret < 0) {
+		return ret;
 	}
 
 	return 0;
