@@ -1,7 +1,7 @@
+cmake_minimum_required(VERSION 3.8.2)
+
 # This application has its own Kconfig options.
 set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
-# Kconfig.app needs PROJECT_BASE
-set(ENV{PROJECT_BASE} ${CMAKE_SOURCE_DIR})
 
 # CONF_FILE is prj.conf, plus (in addition to, not or) the following, if they
 # exist:
@@ -41,7 +41,9 @@ target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/app_work_queue.c)
 target_sources(app PRIVATE src/lwm2m.c)
 target_sources(app PRIVATE src/light_control.c)
-target_sources_ifdef(CONFIG_NET_L2_BT        app PRIVATE src/bluetooth.c)
-target_sources_ifdef(CONFIG_SYS_LOG_EXT_HOOK app PRIVATE src/tstamp_log.c)
+target_sources_ifdef(CONFIG_APP_LIGHT_TYPE_WS2812 app PRIVATE src/light_control_ws2812.c)
+target_sources_ifdef(CONFIG_APP_LIGHT_TYPE_PWM app PRIVATE src/light_control_pwm.c)
+target_sources_ifdef(CONFIG_NET_L2_BT          app PRIVATE src/bluetooth.c)
+target_sources_ifdef(CONFIG_SYS_LOG_EXT_HOOK   app PRIVATE src/tstamp_log.c)
 
-target_link_libraries_ifdef(CONFIG_MBEDTLS app mbedTLS)
+target_link_libraries_ifdef(CONFIG_MBEDTLS app PRIVATE mbedTLS)

@@ -23,6 +23,9 @@
 #include <bluetooth/conn.h>
 
 #include "product_id.h"
+#include "light_control.h"
+
+#define LIGHT_FLASH_DURATION K_MSEC(200)
 
 /* Defines for the LED elements */
 #define LED_GPIO_PIN          LED0_GPIO_PIN
@@ -82,6 +85,7 @@ static void connected(struct bt_conn *conn, u8_t err)
 		SYS_LOG_ERR("BT LE Connection failed: %u", err);
 	} else {
 		SYS_LOG_INF("BT LE Connected");
+		light_control_flash(0x00, 0xff, 0x00, LIGHT_FLASH_DURATION);
 		set_bluetooth_led(1);
 	}
 }
@@ -89,6 +93,7 @@ static void connected(struct bt_conn *conn, u8_t err)
 static void disconnected(struct bt_conn *conn, u8_t reason)
 {
 	SYS_LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
+	light_control_flash(0xff, 0x00, 0x00, LIGHT_FLASH_DURATION);
 	set_bluetooth_led(0);
 	sys_reboot(0);
 }
@@ -115,5 +120,5 @@ static int bt_network_init(struct device *dev)
 	return ret;
 }
 
-/* last priority in the POST_KERNEL init levels */
+/* Needs to come after the light control initialization, so just add one. */
 SYS_INIT(bt_network_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

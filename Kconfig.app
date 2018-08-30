@@ -1,100 +1,31 @@
 # Copyright (c) 2017 Linaro Limited
+# Copyright (c) 2018 Open Source Foundries Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-config APP_PWM_WHITE
-	bool
-	prompt "Enable dedicated PWM for white color"
-	default y
+# Selector for what type of light this is.
+choice APP_LIGHT_TYPE
+	prompt "Type of lighting technology which is in use"
+	default APP_LIGHT_TYPE_WS2812
 
-if APP_PWM_WHITE
+config APP_LIGHT_TYPE_PWM
+	bool "LEDs with PWM brightness"
+	select PWM
+	select PWM_NRF5_SW
+	help
+	  Select this option to use this application with up to four
+	  LEDs (supporting red, green, blue, and white color channels, but
+	  not requiring any of them).
 
-config APP_PWM_WHITE_DEV
-	string
-	prompt "PWM device name used for white"
+config APP_LIGHT_TYPE_WS2812
+	bool "LEDs from WS2812 strip"
+	select SPI
+	select LED_STRIP
+	select WS2812_STRIP
+	help
+	  Select this to use WS2812 LED strips.
 
-config APP_PWM_WHITE_PIN
-	int
-	prompt "PWM pin number used for white"
-	default 0
+endchoice # APP_LIGHT_TYPE
 
-config APP_PWM_WHITE_PIN_CEILING
-	int
-	prompt "PWM pin level ceiling"
-	default 255
-	range 1 255
-
-endif # APP_PWM_WHITE
-
-config APP_PWM_RED
-	bool
-	prompt "Enable dedicated PWM for red"
-	default n
-
-if APP_PWM_RED
-
-config APP_PWM_RED_DEV
-	string
-	prompt "PWM device name used for red"
-
-config APP_PWM_RED_PIN
-	int
-	prompt "PWM pin number used for red"
-	default 0
-
-config APP_PWM_RED_PIN_CEILING
-	int
-	prompt "PWM pin level ceiling"
-	default 255
-	range 1 255
-
-endif # APP_PWM_RED
-
-config APP_PWM_GREEN
-	bool
-	prompt "Enable dedicated PWM for green"
-	default n
-
-if APP_PWM_GREEN
-
-config APP_PWM_GREEN_DEV
-	string
-	prompt "PWM device name used for green"
-
-config APP_PWM_GREEN_PIN
-	int
-	prompt "PWM pin number used for green"
-	default 0
-
-config APP_PWM_GREEN_PIN_CEILING
-	int
-	prompt "PWM pin level ceiling"
-	default 255
-	range 1 255
-
-endif # APP_PWM_GREEN
-
-config APP_PWM_BLUE
-	bool
-	prompt "Enable dedicated PWM for blue"
-	default n
-
-if APP_PWM_BLUE
-
-config APP_PWM_BLUE_DEV
-	string
-	prompt "PWM device name used for blue"
-
-config APP_PWM_BLUE_PIN
-	int
-	prompt "PWM pin number used for blue"
-	default 0
-
-config APP_PWM_BLUE_PIN_CEILING
-	int
-	prompt "PWM pin level ceiling"
-	default 255
-	range 1 255
-
-endif # APP_PWM_BLUE
+rsource "Kconfig.app.pwm"

@@ -1,12 +1,8 @@
 # Copyright (c) 2017 Linaro Limited
+# Copyright (c) 2018 Foundries.io
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-
-# Leave this at the top unless Zephyr's Kconfig behavior changes to
-# use the first default it finds. (Currently it differs from the Linux
-# behavior, which is to use the first default).
-source "$ZEPHYR_BASE/Kconfig.zephyr"
 
 mainmenu "LWM2M application configuration"
 
@@ -23,7 +19,7 @@ config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	select NET_SHELL
 	select NET_IPV4
 	select NET_UDP
-	select NET_APP_NEED_IPV4
+	select NET_CONFIG_NEED_IPV4
 	default n
 
 if FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
@@ -37,11 +33,10 @@ endif # FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
 	select NET_IPV6
-	select NET_APP_NEED_IPV6
-	select NET_APP_BT_NODE
+	select NET_CONFIG_NEED_IPV6
+	select NET_CONFIG_BT_NODE
 	select SENSOR
 	select TEMP_NRF5
-	select PWM_NRF5_SW
 	select ENTROPY_NRF5_RNG
 	default n
 
@@ -58,7 +53,7 @@ config TEMP_NRF5_NAME
 	default "fota-temp"
 
 config BT_DEVICE_NAME
-	default "Linaro IPSP node"
+	default "ZMP IPSP node"
 
 # The following BT configs are not needed in peripheral mode.
 
@@ -86,4 +81,8 @@ config SYS_LOG_FOTA_LEVEL
 	  - 3 INFO: write SYS_LOG_INF in addition to previous levels
 	  - 4 DEBUG: write SYS_LOG_DBG in addition to previous levels
 
-source "$PROJECT_BASE/Kconfig.app"
+rsource "Kconfig.app"
+
+# Leave this at the bottom: we need to override Zephyr's default settings
+# with some of the values above.
+source "$ZEPHYR_BASE/Kconfig.zephyr"
