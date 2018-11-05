@@ -6,9 +6,12 @@
 
 #include <stdlib.h>
 
-#define SYS_LOG_DOMAIN "fota/light"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_FOTA_LEVEL
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_light_led
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #include <device.h>
 #include <led_strip.h>
 #include <init.h>
@@ -67,20 +70,20 @@ static int light_control_ws2812_pre_init(struct ipso_light_ctl *ilc)
 	/* Sanity-check the SPI configuration. */
 	spi = device_get_binding(SPI_DEV_NAME);
 	if (spi) {
-		SYS_LOG_INF("Found SPI device %s", SPI_DEV_NAME);
+		LOG_INF("Found SPI device %s", SPI_DEV_NAME);
 	} else {
-		SYS_LOG_ERR("SPI device not found; you must choose a SPI "
-			    "device and configure its name to %s",
-			    SPI_DEV_NAME);
+		LOG_ERR("SPI device not found; you must choose a SPI "
+			"device and configure its name to %s",
+			SPI_DEV_NAME);
 		return -ENODEV;
 	}
 
 	/* Cache the actual LED strip device. */
 	data->ws2812 = device_get_binding(WS2812_DEV_NAME);
 	if (data->ws2812) {
-		SYS_LOG_INF("Found LED strip device %s", WS2812_DEV_NAME);
+		LOG_INF("Found LED strip device %s", WS2812_DEV_NAME);
 	} else {
-		SYS_LOG_ERR("LED strip device %s not found", WS2812_DEV_NAME);
+		LOG_ERR("LED strip device %s not found", WS2812_DEV_NAME);
 		return -ENODEV;
 	}
 
@@ -137,7 +140,7 @@ static int light_control_ws2812_on_off_cb(struct ipso_light_ctl *ilc, bool on)
 	return 0;
 
 fail:
-	SYS_LOG_ERR("Failed to update light state");
+	LOG_ERR("Failed to update light state");
 	return ret;
 }
 
@@ -150,7 +153,7 @@ static int light_control_ws2812_dimmer_cb(struct ipso_light_ctl *ilc,
 	/* Update output if light is 'on' */
 	ret = ilc_get_onoff(ilc, &on);
 	if (ret) {
-		SYS_LOG_ERR("Failed to get onoff");
+		LOG_ERR("Failed to get onoff");
 		return ret;
 	}
 
@@ -160,7 +163,7 @@ static int light_control_ws2812_dimmer_cb(struct ipso_light_ctl *ilc,
 
 	ret = light_control_ws2812_update(ilc, dimmer);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update dimmer");
+		LOG_ERR("Failed to update dimmer");
 		return ret;
 	}
 
@@ -184,13 +187,13 @@ static int light_control_ws2812_color_cb(struct ipso_light_ctl *ilc,
 	data->color.r = color_rgb[0];
 	data->color.g = color_rgb[1];
 	data->color.b = color_rgb[2];
-	SYS_LOG_DBG("RGB color updated to #%02x%02x%02x", color_rgb[0],
-					color_rgb[1], color_rgb[2]);
+	LOG_DBG("RGB color updated to #%02x%02x%02x", color_rgb[0],
+		color_rgb[1], color_rgb[2]);
 
 	/* Update output if light is 'on' */
 	ret = ilc_get_onoff(ilc, &on);
 	if (ret) {
-		SYS_LOG_ERR("Failed to get onoff: %d", ret);
+		LOG_ERR("Failed to get onoff: %d", ret);
 		return ret;
 	}
 
@@ -200,13 +203,13 @@ static int light_control_ws2812_color_cb(struct ipso_light_ctl *ilc,
 
 	ret = ilc_get_dimmer(ilc, &dimmer);
 	if (ret) {
-		SYS_LOG_ERR("Failed to get dimmer");
+		LOG_ERR("Failed to get dimmer");
 		return ret;
 	}
 
 	ret = light_control_ws2812_update(ilc, dimmer);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update color");
+		LOG_ERR("Failed to update color");
 		return ret;
 	}
 
@@ -261,9 +264,9 @@ static int light_control_register_ws2812(struct device *dev)
 {
 	int ret = light_control_register(&ilc_ws2812);
 	if (ret) {
-		SYS_LOG_ERR("failed: %d", ret);
+		LOG_ERR("failed: %d", ret);
 	} else {
-		SYS_LOG_INF("success");
+		LOG_INF("success");
 	}
 	return ret;
 }
