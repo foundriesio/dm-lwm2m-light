@@ -100,6 +100,20 @@ config BT_CTLR_CONN_PARAM_REQ
 config BT_CTLR_ADV_EXT
 	default n
 
+if APP_LIGHT_TYPE_WS2812
+
+# SPI for WS2812, uses SPI 0, with SoC->ring data on nrf52 pin 2 (MOSI).
+config SPI_0
+	default y
+
+config SPI_NRFX
+	default y
+
+config WS2812_STRIP_SPI_DEV_NAME
+	default "SPI_0"
+
+endif # APP_LIGHT_TYPE_WS2812
+
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
 
 module = FOTA
