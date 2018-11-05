@@ -1,9 +1,15 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
- * Copyright (c) 2017-2018 Open Source Foundries Ltd.
+ * Copyright (c) 2017-2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#define LOG_MODULE_NAME fota_light
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr.h>
 #include <net/lwm2m.h>
@@ -85,8 +91,8 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	k_sem_take(&ilc_sem, K_FOREVER);
 
 	if (data_len != 1) {
-		SYS_LOG_ERR("Length of on_off callback data incorrect! (%u)",
-			    data_len);
+		LOG_ERR("Length of on_off callback data is incorrect! (%u)",
+			data_len);
 		goto out;
 	}
 
@@ -116,8 +122,8 @@ static int dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	k_sem_take(&ilc_sem, K_FOREVER);
 
 	if (dimmer > 100) {
-		SYS_LOG_ERR("Invalid dimmer value %u, forcing it to 100",
-			    dimmer);
+		LOG_ERR("Invalid dimmer value %u, forcing it to 100",
+			dimmer);
 		dimmer = 100;
 	}
 

@@ -1,19 +1,26 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
+ * Copyright (c) 2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_DOMAIN "fota/bluetooth"
-#define SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_bluetooth
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr/types.h>
 #include <stddef.h>
 #include <errno.h>
 #include <zephyr.h>
 #include <gpio.h>
+#include <logging/log_ctrl.h>
 #include <misc/reboot.h>
+#include <net/bt.h>
+#include <net/net_if.h>
+#include <net/net_mgmt.h>
 #include <init.h>
 #include <soc.h>
 #include <board.h>
@@ -65,10 +72,10 @@ static void set_own_bt_addr(bt_addr_le_t *addr)
 /* BT LE Connect/Disconnect callbacks */
 static void set_bluetooth_led(bool state)
 {
-#if defined(BT_GPIO_PIN) && defined(BT_GPIO_PORT)
+#if defined(BT_GPIO_PIN) && defined(BT_GPIO_CONTROLLER)
 	struct device *gpio;
 
-	gpio = device_get_binding(BT_GPIO_PORT);
+	gpio = device_get_binding(BT_GPIO_CONTROLLER);
 	gpio_pin_configure(gpio, BT_GPIO_PIN, GPIO_DIR_OUT);
 	gpio_pin_write(gpio, BT_GPIO_PIN, state);
 #elif defined(LED_GPIO_PIN) && defined(LED_GPIO_PORT)
@@ -82,9 +89,9 @@ static void set_bluetooth_led(bool state)
 static void connected(struct bt_conn *conn, u8_t err)
 {
 	if (err) {
-		SYS_LOG_ERR("BT LE Connection failed: %u", err);
+		LOG_ERR("BT LE Connection failed: %u", err);
 	} else {
-		SYS_LOG_INF("BT LE Connected");
+		LOG_INF("BT LE Connected");
 		light_control_flash(0x00, 0xff, 0x00, LIGHT_FLASH_DURATION);
 		set_bluetooth_led(1);
 	}
@@ -92,9 +99,10 @@ static void connected(struct bt_conn *conn, u8_t err)
 
 static void disconnected(struct bt_conn *conn, u8_t reason)
 {
-	SYS_LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
+	LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
 	light_control_flash(0xff, 0x00, 0x00, LIGHT_FLASH_DURATION);
 	set_bluetooth_led(0);
+	LOG_PANIC();
 	sys_reboot(0);
 }
 
@@ -109,7 +117,7 @@ static int bt_network_init(struct device *dev)
 	int ret = 0;
 
 	/* Storage used to provide a BT MAC based on the serial number */
-	SYS_LOG_DBG("Setting Bluetooth MAC\n");
+	LOG_DBG("Setting Bluetooth MAC\n");
 
 	memset(&bt_addr, 0, sizeof(bt_addr_le_t));
 	bt_addr.type = BT_ADDR_LE_RANDOM;
@@ -120,5 +128,26 @@ static int bt_network_init(struct device *dev)
 	return ret;
 }
 
-/* Needs to come after the light control initialization, so just add one. */
+int bt_network_disable(void)
+{
+	/* TODO: use a better way to select BT interface */
+	struct net_if *iface = net_if_get_default();
+	int ret;
+
+	ret = net_mgmt(NET_REQUEST_BT_DISCONNECT, iface, NULL, 0);
+	if (ret < 0) {
+		LOG_ERR("Disconnect failed:%d", ret);
+		return ret;
+	}
+
+	ret = net_mgmt(NET_REQUEST_BT_ADVERTISE, iface, "off", 0);
+	if (ret < 0) {
+		LOG_ERR("Error stopping advertise:%d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+/* last priority in the POST_KERNEL init levels */
 SYS_INIT(bt_network_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
