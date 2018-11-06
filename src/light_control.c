@@ -1,9 +1,15 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
- * Copyright (c) 2017-2018 Open Source Foundries Ltd.
+ * Copyright (c) 2017-2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#define LOG_MODULE_NAME fota_light
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr.h>
 #include <net/lwm2m.h>
@@ -32,7 +38,7 @@ static u8_t char_to_nibble(char c)
 		return c - 'A' + 10U;
 	}
 
-	SYS_LOG_ERR("Invalid ascii hex value (%c), assuming 0xF!", c);
+	LOG_ERR("Invalid ascii hex value (%c), assuming 0xF!", c);
 	return 15U;
 }
 
@@ -42,12 +48,12 @@ int light_control_parse_rgb(char *color, u16_t color_len, u8_t rgb[3])
 
 	/* Check if just HEX and #HEX */
 	if (color_len < 6 || color_len > 7) {
-		SYS_LOG_ERR("Invalid color length (%s)", color);
+		LOG_ERR("Invalid color length (%s)", color);
 		return -EINVAL;
 	}
 
 	if (color_len == 7 && *color != '#') {
-		SYS_LOG_ERR("Invalid color format (%s)", color);
+		LOG_ERR("Invalid color format (%s)", color);
 		return -EINVAL;
 	}
 
@@ -85,8 +91,8 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	k_sem_take(&ilc_sem, K_FOREVER);
 
 	if (data_len != 1) {
-		SYS_LOG_ERR("Length of on_off callback data incorrect! (%u)",
-			    data_len);
+		LOG_ERR("Length of on_off callback data is incorrect! (%u)",
+			data_len);
 		goto out;
 	}
 
@@ -116,8 +122,8 @@ static int dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	k_sem_take(&ilc_sem, K_FOREVER);
 
 	if (dimmer > 100) {
-		SYS_LOG_ERR("Invalid dimmer value %u, forcing it to 100",
-			    dimmer);
+		LOG_ERR("Invalid dimmer value %u, forcing it to 100",
+			dimmer);
 		dimmer = 100;
 	}
 
@@ -196,10 +202,10 @@ int light_control_flash(u8_t r, u8_t g, u8_t b, s32_t duration)
 
 	k_sem_take(&ilc_sem, K_FOREVER);
 	if (!ilc) {
-		SYS_LOG_ERR("no light registered but flash called");
+		LOG_ERR("no light registered but flash called");
 		ret = -ENODEV;
 	} else if (!ilc->flash) {
-		SYS_LOG_WRN("light control object doesn't support flashing");
+		LOG_WRN("light control object doesn't support flashing");
 		ret = -EINVAL;
 	} else {
 		ret = ilc->flash(ilc, r, g, b, duration);

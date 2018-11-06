@@ -11,9 +11,11 @@
 
 #include <string.h>
 
-#define SYS_LOG_DOMAIN "fota/light"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_FOTA_LEVEL
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_light_pwm
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <device.h>
 #include <pwm.h>
@@ -65,8 +67,8 @@ static int write_pwm_pin(struct device *pwm_dev, u32_t pwm_pin,
 {
 	u32_t pulse = scale_pulse(level, ceiling);
 
-	SYS_LOG_DBG("Set PWM %d: level %d, ceiling %d, pulse %lu",
-		    pwm_pin, level, ceiling, pulse);
+	LOG_DBG("Set PWM %d: level %d, ceiling %d, pulse %u",
+		pwm_pin, level, ceiling, pulse);
 
 	return pwm_pin_set_usec(pwm_dev, pwm_pin, PWM_PERIOD, pulse);
 }
@@ -94,7 +96,7 @@ static int light_control_pwm_set_color(struct ipso_light_ctl *ilc, u8_t rgb[3])
 		ret = write_pwm_pin(data->white, CONFIG_APP_PWM_WHITE_PIN,
 				    0, 0);
 		if (ret) {
-			SYS_LOG_ERR("Failed to update white PWM");
+			LOG_ERR("Failed to update white PWM");
 			return ret;
 		}
 	}
@@ -104,7 +106,7 @@ static int light_control_pwm_set_color(struct ipso_light_ctl *ilc, u8_t rgb[3])
 	ret = write_pwm_pin(data->red, CONFIG_APP_PWM_RED_PIN,
 			    rgb[0], CONFIG_APP_PWM_RED_PIN_CEILING);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update red PWM");
+		LOG_ERR("Failed to update red PWM");
 		return ret;
 	}
 #endif
@@ -113,7 +115,7 @@ static int light_control_pwm_set_color(struct ipso_light_ctl *ilc, u8_t rgb[3])
 	ret = write_pwm_pin(data->green, CONFIG_APP_PWM_GREEN_PIN,
 			    rgb[1], CONFIG_APP_PWM_GREEN_PIN_CEILING);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update green PWM");
+		LOG_ERR("Failed to update green PWM");
 		return ret;
 	}
 #endif
@@ -122,7 +124,7 @@ static int light_control_pwm_set_color(struct ipso_light_ctl *ilc, u8_t rgb[3])
 	ret = write_pwm_pin(data->blue, CONFIG_APP_PWM_BLUE_PIN,
 			    rgb[2], CONFIG_APP_PWM_BLUE_PIN_CEILING);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update blue PWM");
+		LOG_ERR("Failed to update blue PWM");
 		return ret;
 	}
 #endif
@@ -133,7 +135,7 @@ static int light_control_pwm_set_color(struct ipso_light_ctl *ilc, u8_t rgb[3])
 		ret = write_pwm_pin(data->white, CONFIG_APP_PWM_WHITE_PIN,
 				    white, CONFIG_APP_PWM_WHITE_PIN_CEILING);
 		if (ret) {
-			SYS_LOG_ERR("Failed to update white PWM");
+			LOG_ERR("Failed to update white PWM");
 			return ret;
 		}
 	}
@@ -167,7 +169,7 @@ static int light_control_pwm_update(struct ipso_light_ctl *ilc, u8_t dimmer)
 
 	ret = light_control_pwm_set_color(ilc, rgb);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update color");
+		LOG_ERR("Failed to update color");
 		return ret;
 	}
 
@@ -181,28 +183,28 @@ int light_control_pwm_pre_init(struct ipso_light_ctl *ilc)
 #if defined(CONFIG_APP_PWM_WHITE)
 	data->white = device_get_binding(CONFIG_APP_PWM_WHITE_DEV);
 	if (!data->white) {
-		SYS_LOG_ERR("Failed to get PWM device used for white");
+		LOG_ERR("Failed to get PWM device used for white");
 		return -ENODEV;
 	}
 #endif
 #if defined(CONFIG_APP_PWM_RED)
 	data->red = device_get_binding(CONFIG_APP_PWM_RED_DEV);
 	if (!data->red) {
-		SYS_LOG_ERR("Failed to get PWM device used for red");
+		LOG_ERR("Failed to get PWM device used for red");
 		return -ENODEV;
 	}
 #endif
 #if defined(CONFIG_APP_PWM_GREEN)
 	data->green = device_get_binding(CONFIG_APP_PWM_GREEN_DEV);
 	if (!data->green) {
-		SYS_LOG_ERR("Failed to get PWM device used for green");
+		LOG_ERR("Failed to get PWM device used for green");
 		return -ENODEV;
 	}
 #endif
 #if defined(CONFIG_APP_PWM_BLUE)
 	data->blue = device_get_binding(CONFIG_APP_PWM_BLUE_DEV);
 	if (!data->blue) {
-		SYS_LOG_ERR("Failed to get PWM device used for blue");
+		LOG_ERR("Failed to get PWM device used for blue");
 		return -ENODEV;
 	}
 #endif
@@ -260,7 +262,7 @@ static int light_control_pwm_on_off_cb(struct ipso_light_ctl *ilc, bool on)
 	return 0;
 
 fail:
-	SYS_LOG_ERR("Failed to update light state");
+	LOG_ERR("Failed to update light state");
 	return ret;
 }
 
@@ -272,7 +274,7 @@ static int light_control_pwm_dimmer_cb(struct ipso_light_ctl *ilc, u8_t dimmer)
 	/* Update PWM output if light is 'on' */
 	ret = ilc_get_onoff(ilc, &on);
 	if (ret) {
-		SYS_LOG_ERR("Failed to get onoff");
+		LOG_ERR("Failed to get onoff");
 		return ret;
 	}
 
@@ -282,7 +284,7 @@ static int light_control_pwm_dimmer_cb(struct ipso_light_ctl *ilc, u8_t dimmer)
 
 	ret = light_control_pwm_update(ilc, dimmer);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update dimmer");
+		LOG_ERR("Failed to update dimmer");
 		return ret;
 	}
 
@@ -304,13 +306,13 @@ static int light_control_pwm_color_cb(struct ipso_light_ctl *ilc,
 	}
 
 	memcpy(data->color_rgb, color_rgb, sizeof(data->color_rgb));
-	SYS_LOG_DBG("RGB color updated to #%02x%02x%02x", color_rgb[0],
-					color_rgb[1], color_rgb[2]);
+	LOG_DBG("RGB color updated to #%02x%02x%02x", color_rgb[0],
+		color_rgb[1], color_rgb[2]);
 
 	/* Update PWM output if light is 'on' */
 	ret = ilc_get_onoff(ilc, &on);
 	if (ret) {
-		SYS_LOG_ERR("Failed to get onoff: %d", ret);
+		LOG_ERR("Failed to get onoff: %d", ret);
 		return ret;
 	}
 
@@ -320,13 +322,13 @@ static int light_control_pwm_color_cb(struct ipso_light_ctl *ilc,
 
 	ret = ilc_get_dimmer(ilc, &dimmer);
 	if (ret) {
-		SYS_LOG_ERR("Failed to get dimmer");
+		LOG_ERR("Failed to get dimmer");
 		return ret;
 	}
 
 	ret = light_control_pwm_update(ilc, dimmer);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update color");
+		LOG_ERR("Failed to update color");
 		return ret;
 	}
 
@@ -348,9 +350,9 @@ static int light_control_register_pwm(struct device *dev)
 {
 	int ret = light_control_register(&ilc_pwm);
 	if (ret) {
-		SYS_LOG_ERR("failed: %d", ret);
+		LOG_ERR("failed: %d", ret);
 	} else {
-		SYS_LOG_INF("success");
+		LOG_INF("success");
 	}
 	return ret;
 }

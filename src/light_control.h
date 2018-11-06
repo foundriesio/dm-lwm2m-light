@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __FOTA_LIGHT_CONTROL_H__
-#define __FOTA_LIGHT_CONTROL_H__
+#ifndef FOTA_LIGHT_CONTROL_H__
+#define FOTA_LIGHT_CONTROL_H__
 
 int init_light_control(void);
 int light_control_flash(u8_t r, u8_t g, u8_t b, s32_t duration);
 
-#endif	/* __FOTA_LIGHT_CONTROL_H__ */
+#endif	/* FOTA_LIGHT_CONTROL_H__ */

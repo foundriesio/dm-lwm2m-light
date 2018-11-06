@@ -1,17 +1,21 @@
 /*
  * Copyright (c) 2017 Linaro Limited
+ * Copyright (c) 2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_DOMAIN "fota/lwm2m"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_FOTA_LEVEL
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_lwm2m
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr.h>
 #include <dfu/mcuboot.h>
 #include <dfu/flash_img.h>
 #include <flash.h>
+#include <logging/log_ctrl.h>
 #include <misc/reboot.h>
 #include <net/net_if.h>
 #include <net/net_mgmt.h>
@@ -28,6 +32,9 @@
 #include "product_id.h"
 #include "lwm2m_credentials.h"
 #include "app_work_queue.h"
+#ifdef CONFIG_NET_L2_BT
+#include "bluetooth.h"
+#endif
 
 #define WAIT_TIME	K_SECONDS(10)
 #define CONNECT_TIME	K_SECONDS(10)
@@ -125,6 +132,8 @@ typedef enum {
 
 static struct k_delayed_work reboot_work;
 static struct net_mgmt_event_callback cb;
+static struct k_work net_event_work;
+static struct k_work_q *net_event_work_q;
 
 #if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
 NET_PKT_TX_SLAB_DEFINE(lwm2m_tx_udp, 5);
@@ -185,13 +194,17 @@ static void *firmware_read_cb(u16_t obj_inst_id, size_t *data_len)
 
 static void reboot(struct k_work *work)
 {
-	SYS_LOG_INF("Rebooting device");
+	LOG_INF("Rebooting device");
+#ifdef CONFIG_NET_L2_BT
+	bt_network_disable();
+#endif
+	LOG_PANIC();
 	sys_reboot(0);
 }
 
 static int device_reboot_cb(u16_t obj_inst_id)
 {
-	SYS_LOG_INF("DEVICE: Reboot in progress");
+	LOG_INF("DEVICE: Reboot in progress");
 	k_delayed_work_submit(&reboot_work, MSEC_PER_SEC);
 
 	return 0;
@@ -203,20 +216,20 @@ static int firmware_update_cb(u16_t obj_inst_id)
 	struct update_counter update_counter;
 	int ret = 0;
 
-	SYS_LOG_DBG("Executing firmware update");
+	LOG_DBG("Executing firmware update");
 
 	/* Bump update counter so it can be verified on the next reboot */
 	ret = lwm2m_update_counter_read(&update_counter);
 	if (ret) {
-		SYS_LOG_ERR("Failed read update counter");
+		LOG_ERR("Failed read update counter");
 		goto cleanup;
 	}
-	SYS_LOG_INF("Update Counter: current %d, update %d",
-			update_counter.current, update_counter.update);
+	LOG_INF("Update Counter: current %d, update %d",
+		update_counter.current, update_counter.update);
 	ret = lwm2m_update_counter_update(COUNTER_UPDATE,
-			update_counter.current + 1);
+					  update_counter.current + 1);
 	if (ret) {
-		SYS_LOG_ERR("Failed to update the update counter: %d", ret);
+		LOG_ERR("Failed to update the update counter: %d", ret);
 		goto cleanup;
 	}
 
@@ -246,22 +259,22 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 	int ret = 0;
 
 	if (total_size > FLASH_BANK_SIZE) {
-		SYS_LOG_ERR("Artifact file size too big (%d)", total_size);
+		LOG_ERR("Artifact file size too big (%d)", total_size);
 		return -EINVAL;
 	}
 
 	if (!data_len) {
-		SYS_LOG_ERR("Data len is zero, nothing to write.");
+		LOG_ERR("Data len is zero, nothing to write.");
 		return -EINVAL;
 	}
 
 	/* Erase bank 1 before starting the write process */
 	if (bytes_downloaded == 0) {
 		flash_img_init(&dfu_ctx, flash_dev);
-		SYS_LOG_INF("Download firmware started, erasing second bank");
+		LOG_INF("Download firmware started, erasing second bank");
 		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
 		if (ret != 0) {
-			SYS_LOG_ERR("Failed to erase flash bank 1");
+			LOG_ERR("Failed to erase flash bank 1");
 			goto cleanup;
 		}
 	}
@@ -278,12 +291,12 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 
 	if (downloaded > percent_downloaded) {
 		percent_downloaded = downloaded;
-		SYS_LOG_INF("%d%%", percent_downloaded);
+		LOG_INF("%d%%", percent_downloaded);
 	}
 
 	ret = flash_img_buffered_write(&dfu_ctx, data, data_len, last_block);
 	if (ret < 0) {
-		SYS_LOG_ERR("Failed to write flash block");
+		LOG_ERR("Failed to write flash block");
 		goto cleanup;
 	}
 
@@ -293,8 +306,8 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 	}
 
 	if (total_size && (bytes_downloaded != total_size)) {
-		SYS_LOG_ERR("Early last block, downloaded %d, expecting %d",
-				bytes_downloaded, total_size);
+		LOG_ERR("Early last block, downloaded %d, expecting %d",
+			bytes_downloaded, total_size);
 		ret = -EIO;
 	}
 
@@ -351,7 +364,7 @@ static int lwm2m_setup(void)
 	/* Check if there is a valid device id stored in the device */
 	ret = lwm2m_get_device_id(flash_dev, ep_name);
 	if (ret) {
-		SYS_LOG_ERR("Fail to read LWM2M Device ID");
+		LOG_ERR("Fail to read LWM2M Device ID");
 	}
 #if defined(CONFIG_MODEM_RECEIVER)
 	/* use IMEI */
@@ -361,7 +374,7 @@ static int lwm2m_setup(void)
 		mdm_ctx = mdm_receiver_context_from_id(0);
 		if (mdm_ctx && mdm_ctx->data_imei) {
 			memset(ep_name, 0, sizeof(ep_name));
-			SYS_LOG_WRN("LWM2M Device ID not set, using IMEI");
+			LOG_WRN("LWM2M Device ID not set, using IMEI");
 			snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:imei:%s",
 				 mdm_ctx->data_imei);
 			ret = 0;
@@ -370,17 +383,17 @@ static int lwm2m_setup(void)
 #endif
 	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
 		/* No UUID, use the serial number instead */
-		SYS_LOG_WRN("LWM2M Device ID not set, using serial number");
+		LOG_WRN("LWM2M Device ID not set, using serial number");
 		snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:sn:%s",
 			 device_serial_no);
 	}
-	SYS_LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
+	LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
 
 #if defined(CONFIG_NET_APP_DTLS)
 	/* Check if there is a valid device token stored in the device */
 	ret = lwm2m_get_device_token(flash_dev, client_psk);
 	if (ret || client_psk[LWM2M_DEVICE_TOKEN_SIZE - 1] != '\0') {
-		SYS_LOG_ERR("Fail to read LWM2M Device Token");
+		LOG_ERR("Fail to read LWM2M Device Token");
 
 		/* No token, use the default key instead */
 		strncpy(client_psk, DEFAULT_CLIENT_PSK,
@@ -390,7 +403,7 @@ static int lwm2m_setup(void)
 	ret = generate_hex(client_psk, client_psk_bin,
 			   LWM2M_DEVICE_TOKEN_HEX_SIZE);
 	if (ret) {
-		SYS_LOG_ERR("Failed to generate psk hex: %d", ret);
+		LOG_ERR("Failed to generate psk hex: %d", ret);
 		return ret;
 	}
 #endif
@@ -489,12 +502,12 @@ static void rd_client_event(struct lwm2m_ctx *client,
 		break;
 
 	case LWM2M_RD_CLIENT_EVENT_DEREGISTER_FAILURE:
-		SYS_LOG_DBG("Deregister failure!");
+		LOG_DBG("Deregister failure!");
 		/* TODO: handle deregister? */
 		break;
 
 	case LWM2M_RD_CLIENT_EVENT_DISCONNECT:
-		SYS_LOG_DBG("Disconnected");
+		LOG_DBG("Disconnected");
 		/* TODO: handle disconnect? */
 		break;
 
@@ -511,11 +524,11 @@ static void log_img_ver(void)
 	ret = boot_read_bank_header(FLASH_AREA_IMAGE_0_OFFSET,
 				    &header, sizeof(header));
 	if (ret) {
-		SYS_LOG_ERR("can't read header: %d", ret);
+		LOG_ERR("can't read header: %d", ret);
 		return;
 	} else if (header.mcuboot_version != 1) {
-		SYS_LOG_ERR("unsupported MCUboot version %u",
-			    header.mcuboot_version);
+		LOG_ERR("unsupported MCUboot version %u",
+			header.mcuboot_version);
 		return;
 	}
 
@@ -523,7 +536,7 @@ static void log_img_ver(void)
 	snprintf(firmware_version, sizeof(firmware_version),
 		 "%u.%u.%u build #%u", ver->major, ver->minor,
 		 ver->revision, ver->build_num);
-	SYS_LOG_INF("image version %s", firmware_version);
+	LOG_INF("image version %s", firmware_version);
 }
 
 static int lwm2m_image_init(void)
@@ -537,7 +550,7 @@ static int lwm2m_image_init(void)
 	 */
 	flash_dev = device_get_binding(FLASH_DEV_NAME);
 	if (!flash_dev) {
-		SYS_LOG_ERR("missing flash device %s", FLASH_DEV_NAME);
+		LOG_ERR("missing flash device %s", FLASH_DEV_NAME);
 		return -ENODEV;
 	}
 
@@ -546,43 +559,43 @@ static int lwm2m_image_init(void)
 	/* Update boot status and update counter */
 	ret = lwm2m_update_counter_read(&counter);
 	if (ret) {
-		SYS_LOG_ERR("Failed read update counter");
+		LOG_ERR("Failed read update counter");
 		return ret;
 	}
-	SYS_LOG_INF("Update Counter: current %d, update %d",
-			counter.current, counter.update);
+	LOG_INF("Update Counter: current %d, update %d",
+		counter.current, counter.update);
 	image_ok = boot_is_img_confirmed();
-	SYS_LOG_INF("Image is%s confirmed OK", image_ok ? "" : " not");
+	LOG_INF("Image is%s confirmed OK", image_ok ? "" : " not");
 	if (!image_ok) {
 		ret = boot_write_img_confirmed();
 		if (ret) {
-			SYS_LOG_ERR("Couldn't confirm this image: %d", ret);
+			LOG_ERR("Couldn't confirm this image: %d", ret);
 			return ret;
 		}
-		SYS_LOG_INF("Marked image as OK");
+		LOG_INF("Marked image as OK");
 		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
 		if (ret) {
-			SYS_LOG_ERR("Flash bank erase at offset %x: error %d",
-					FLASH_AREA_IMAGE_1_OFFSET, ret);
+			LOG_ERR("Flash bank erase at offset %x: error %d",
+				FLASH_AREA_IMAGE_1_OFFSET, ret);
 			return ret;
 		}
-		SYS_LOG_DBG("Erased flash bank 1 at offset %x",
-				FLASH_AREA_IMAGE_1_OFFSET);
+		LOG_DBG("Erased flash bank 1 at offset %x",
+			FLASH_AREA_IMAGE_1_OFFSET);
 		if (counter.update != -1) {
 			ret = lwm2m_update_counter_update(COUNTER_CURRENT,
 						counter.update);
 			if (ret) {
-				SYS_LOG_ERR("Failed to update the update "
-					    "counter: %d", ret);
+				LOG_ERR("Failed to update the update "
+					"counter: %d", ret);
 				return ret;
 			}
 			ret = lwm2m_update_counter_read(&counter);
 			if (ret) {
-				SYS_LOG_ERR("Failed to read update counter: %d",
-					    ret);
+				LOG_ERR("Failed to read update counter: %d",
+					ret);
 				return ret;
 			}
-			SYS_LOG_INF("Update Counter updated");
+			LOG_INF("Update Counter updated");
 		}
 	}
 
@@ -590,11 +603,11 @@ static int lwm2m_image_init(void)
 	if (counter.update != -1 &&
 			counter.current == counter.update) {
 		/* Successful update */
-		SYS_LOG_INF("Firmware updated successfully");
+		LOG_INF("Firmware updated successfully");
 		lwm2m_engine_set_u8("5/0/5", RESULT_SUCCESS);
 	} else if (counter.update > counter.current) {
 		/* Failed update */
-		SYS_LOG_INF("Firmware failed to be updated");
+		LOG_INF("Firmware failed to be updated");
 		lwm2m_engine_set_u8("5/0/5", RESULT_UPDATE_FAILED);
 	}
 
@@ -636,22 +649,16 @@ static void lwm2m_reg_update_result(struct k_work *work)
 	tc_logging = false;
 }
 
-static void event_iface_up(struct net_mgmt_event_callback *cb,
-		u32_t mgmt_event, struct net_if *iface)
+static void lwm2m_start(struct k_work *work)
 {
 	int ret;
-
-	if (!iface) {
-		SYS_LOG_ERR("No network interface specified!");
-		return;
-	}
 
 	TC_START("LwM2M tests");
 
 	TC_PRINT("Initializing LWM2M Image\n");
 	ret = lwm2m_image_init();
 	if (ret < 0) {
-		SYS_LOG_ERR("Failed to setup image properties (%d)", ret);
+		LOG_ERR("Failed to setup image properties (%d)", ret);
 		_TC_END_RESULT(TC_FAIL, "lwm2m_image_init");
 		TC_END_REPORT(TC_FAIL);
 		return;
@@ -661,7 +668,7 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	TC_PRINT("Initializing LWM2M Engine\n");
 	ret = lwm2m_setup();
 	if (ret < 0) {
-		SYS_LOG_ERR("Cannot setup LWM2M fields (%d)", ret);
+		LOG_ERR("Cannot setup LWM2M fields (%d)", ret);
 		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
 		TC_END_REPORT(TC_FAIL);
 		return;
@@ -708,24 +715,33 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 				    CONFIG_LWM2M_PEER_PORT, ep_name,
 				    rd_client_event);
 #else
-	SYS_LOG_ERR("LwM2M client requires IPv4 or IPv6.");
+	LOG_ERR("LwM2M client requires IPv4 or IPv6.");
 	return;
 #endif
 	if (ret < 0) {
-		SYS_LOG_ERR("LWM2M RD client error (%d)", ret);
+		LOG_ERR("LWM2M RD client error (%d)", ret);
 		return;
 	}
 
-	SYS_LOG_INF("setup complete.");
+	LOG_INF("setup complete.");
 }
 
-int lwm2m_init(void)
+static void event_iface_up(struct net_mgmt_event_callback *cb,
+		u32_t mgmt_event, struct net_if *iface)
+{
+	k_work_submit_to_queue(net_event_work_q, &net_event_work);
+}
+
+int lwm2m_init(struct k_work_q *work_q)
 {
 	struct net_if *iface;
 
+	k_work_init(&net_event_work, lwm2m_start);
+	net_event_work_q = work_q;
+
 	iface = net_if_get_default();
 	if (!iface) {
-		SYS_LOG_ERR("Cannot find default network interface!");
+		LOG_ERR("Cannot find default network interface!");
 		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
 		TC_END_REPORT(TC_FAIL);
 		return -ENETDOWN;
