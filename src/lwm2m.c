@@ -23,7 +23,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <ctype.h>
 #include <stdio.h>
 #include <version.h>
-#include <board.h>
 #include <tc_util.h>
 #if defined(CONFIG_MODEM_RECEIVER)
 #include <drivers/modem/modem_receiver.h>
@@ -548,9 +547,9 @@ static int lwm2m_image_init(void)
 	/*
 	 * Initialize the DFU context.
 	 */
-	flash_dev = device_get_binding(FLASH_DEV_NAME);
+	flash_dev = device_get_binding(DT_FLASH_DEV_NAME);
 	if (!flash_dev) {
-		LOG_ERR("missing flash device %s", FLASH_DEV_NAME);
+		LOG_ERR("missing flash device %s", DT_FLASH_DEV_NAME);
 		return -ENODEV;
 	}
 
