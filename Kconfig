@@ -34,7 +34,6 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
 	select NET_IPV6
 	select NET_CONFIG_NEED_IPV6
-	select NET_CONFIG_BT_NODE
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
@@ -48,10 +47,31 @@ config FOTA_LED_GPIO_INVERTED
 	  This setting is used to invert the GPIO pin settings when toggling
 	  the "Light Control" LED.
 
+config FOTA_ERASE_PROGRESSIVELY
+	bool "Erase flash progressively when updating/receiving new firmware"
+	default y if SOC_NRF52840
+	help
+	 If enabled, flash is erased as necessary when receiving and marking
+         new firmware as ok, instead of erasing the whole image slot at once.
+         This is necessary on some hardware that has long erase times, to
+         prevent long wait times at various stages where large erases are
+         performed.
+
 if FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config TEMP_NRF5_NAME
 	default "fota-temp"
+
+if !CONFIG_NET_L2_OPENTHREAD && !CONFIG_NET_L2_IEEE802154
+
+config BT
+	default y
+
+config BT_CTLR
+	default y
+
+config NET_CONFIG_BT_NODE
+	default y
 
 config BT_DEVICE_NAME
 	default "ZMP IPSP node"
@@ -99,6 +119,8 @@ config BT_CTLR_CONN_PARAM_REQ
 
 config BT_CTLR_ADV_EXT
 	default n
+
+endif # !CONFIG_NET_L2_OPENTHREAD && !CONFIG_NET_L2_IEEE802154
 
 if APP_LIGHT_TYPE_WS2812
 
