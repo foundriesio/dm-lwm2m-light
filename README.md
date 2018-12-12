@@ -1,6 +1,8 @@
 OS Light - the LWM2M Light
 ==========================
 
+test
+
 A simple open source lightbulb project built on the Foundries.io Zephyr microPlatform.  This sample is built against the latest subscriber release available at [Foundries.io Source](http://source.foundries.io).
 
 **NOTE: You will need a valid subscription with [Foundries.io](https://app.foundries.io/) to perform the next steps.**
