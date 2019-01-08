@@ -89,12 +89,6 @@ config NET_CONFIG_PEER_IPV6_ADDR
 config NET_L2_BT
 	default y
 
-config NET_IF_UNICAST_IPV6_ADDR_COUNT
-	default 3
-
-config NET_IF_MCAST_IPV6_ADDR_COUNT
-	default 2
-
 config NET_CONFIG_INIT_TIMEOUT
 	default 0
 
@@ -141,6 +135,14 @@ config WS2812_STRIP_SPI_DEV_NAME
 endif # APP_LIGHT_TYPE_WS2812
 
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
+
+# General defaults
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 3 if BT
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 2 if BT
 
 module = FOTA
 module-dep = LOG
