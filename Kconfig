@@ -16,6 +16,7 @@ config FOTA_DEVICE
 
 config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	bool "Kinetis K6x FOTA settings"
+	depends on !NET_L2_OPENTHREAD
 	select NET_SHELL
 	select NET_IPV4
 	select NET_UDP
@@ -42,7 +43,7 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config FOTA_LED_GPIO_INVERTED
 	bool "Set this if your hardware has an inverted LED GPIO"
-	default n
+	default y if SOC_NRF52840
 	help
 	  This setting is used to invert the GPIO pin settings when toggling
 	  the "Light Control" LED.
@@ -62,7 +63,7 @@ if FOTA_DEVICE_SOC_SERIES_NRF52X
 config TEMP_NRF5_NAME
 	default "fota-temp"
 
-if !CONFIG_NET_L2_OPENTHREAD && !CONFIG_NET_L2_IEEE802154
+if !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
 
 config BT
 	default y
@@ -76,6 +77,9 @@ config NET_CONFIG_BT_NODE
 config BT_DEVICE_NAME
 	default "ZMP IPSP node"
 
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
+	default y
+
 config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
 	default "coap://[fe80::d4e7:0:0:1]:5682"
 
@@ -84,12 +88,6 @@ config NET_CONFIG_PEER_IPV6_ADDR
 
 config NET_L2_BT
 	default y
-
-config NET_IF_UNICAST_IPV6_ADDR_COUNT
-	default 3
-
-config NET_IF_MCAST_IPV6_ADDR_COUNT
-	default 2
 
 config NET_CONFIG_INIT_TIMEOUT
 	default 0
@@ -120,7 +118,7 @@ config BT_CTLR_CONN_PARAM_REQ
 config BT_CTLR_ADV_EXT
 	default n
 
-endif # !CONFIG_NET_L2_OPENTHREAD && !CONFIG_NET_L2_IEEE802154
+endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
 
 if APP_LIGHT_TYPE_WS2812
 
@@ -137,6 +135,20 @@ config WS2812_STRIP_SPI_DEV_NAME
 endif # APP_LIGHT_TYPE_WS2812
 
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
+
+# General defaults
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 3 if BT
+	default 6 if NET_L2_OPENTHREAD
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 2 if BT
+	default 8 if NET_L2_OPENTHREAD
+
+config NET_RX_STACK_SIZE
+	default 5120 if NET_L2_OPENTHREAD
+	default 2048
 
 module = FOTA
 module-dep = LOG
