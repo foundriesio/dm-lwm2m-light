@@ -4,3 +4,7 @@
 	mosi-pin = <2>;
 	miso-pin = <7>;
 };
+
+&uart0 {
+	rts-pin = <0x03>;
+};
