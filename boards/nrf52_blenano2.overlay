@@ -3,6 +3,13 @@
 	sck-pin = <6>;
 	mosi-pin = <2>;
 	miso-pin = <7>;
+
+	ws2812@0 {
+		compatible = "worldsemi,ws2812";
+		reg = <0>;
+		spi-max-frequency = <5250000>;
+		label = "WS2812";
+	};
 };
 
 &uart0 {

@@ -129,9 +129,6 @@ config SPI_0
 config SPI_NRFX
 	default y
 
-config WS2812_STRIP_SPI_DEV_NAME
-	default "SPI_0"
-
 endif # APP_LIGHT_TYPE_WS2812
 
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
