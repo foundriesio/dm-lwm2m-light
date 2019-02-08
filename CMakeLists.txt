@@ -51,6 +51,7 @@ target_sources(app PRIVATE src/lwm2m.c)
 target_sources(app PRIVATE src/light_control.c)
 target_sources_ifdef(CONFIG_APP_LIGHT_TYPE_WS2812 app PRIVATE src/light_control_ws2812.c)
 target_sources_ifdef(CONFIG_APP_LIGHT_TYPE_PWM app PRIVATE src/light_control_pwm.c)
+target_sources_ifdef(CONFIG_APP_ENABLE_TIMER_OBJ app PRIVATE src/timer_control.c)
 target_sources_ifdef(CONFIG_NET_L2_BT        app PRIVATE src/bluetooth.c)
 
 target_link_libraries_ifdef(CONFIG_MBEDTLS app PRIVATE mbedTLS)
