@@ -22,6 +22,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "product_id.h"
 #include "lwm2m.h"
 #include "light_control.h"
+#if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
+#include "timer_control.h"
+#endif
 
 /* Defines and configs for the IPSO elements */
 #define TEMP_DEV		"fota-temp"
@@ -120,6 +123,17 @@ void main(void)
 	}
 	_TC_END_RESULT(TC_PASS, "init_light_control");
 	TC_END_REPORT(TC_PASS);
+
+#if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
+	TC_PRINT("Initializing IPSO Timer Control\n");
+	if (init_timer_control()) {
+		_TC_END_RESULT(TC_FAIL, "init_timer_control");
+		TC_END_REPORT(TC_FAIL);
+		return;
+	}
+	_TC_END_RESULT(TC_PASS, "init_timer_control");
+	TC_END_REPORT(TC_PASS);
+#endif /* CONFIG_ENABLE_TIMER_OBJ */
 
 	if (lwm2m_init(app_work_q)) {
 		return;

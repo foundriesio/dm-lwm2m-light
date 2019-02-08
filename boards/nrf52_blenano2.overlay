@@ -15,3 +15,17 @@
 &uart0 {
 	rts-pin = <0x03>;
 };
+
+/ {
+	buttons {
+		compatible = "gpio-keys";
+		timer0: timer_0 {
+			gpios = <&gpio0 5 GPIO_PUD_PULL_UP>;
+			label = "GPIO timer switch";
+		};
+	};
+
+	aliases {
+		dt-sw-timer0 = &timer0;
+	};
+};

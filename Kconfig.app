@@ -28,4 +28,12 @@ config APP_LIGHT_TYPE_WS2812
 
 endchoice # APP_LIGHT_TYPE
 
+config APP_ENABLE_TIMER_OBJ
+	bool "Adds GPIO timer functionality for auto-shutoff"
+	select GPIO
+	select LWM2M_IPSO_TIMER
+	help
+	  This option adds a IPSO Timer object tied to P05 which can be set
+	  to auto-reset after x second delay.
+
 rsource "Kconfig.app.pwm"
