@@ -1,3 +1,5 @@
+#include "common-nrf52832.overlay"
+
 &spi0 {
 	status = "ok";
 	sck-pin = <6>;
