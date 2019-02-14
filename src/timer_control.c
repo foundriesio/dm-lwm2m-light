@@ -50,6 +50,7 @@ static int timer_digital_state_post_write_cb(u16_t obj_inst_id,
 
 int init_timer_control(void)
 {
+	float64_value_t delay_duration;
 	int ret;
 
 	/* Only one instance (ID 0) is supported. */
@@ -61,6 +62,14 @@ int init_timer_control(void)
 	/* register for timer output state changes */
 	ret = lwm2m_engine_register_post_write_callback("3340/0/5543",
 			timer_digital_state_post_write_cb);
+	if (ret < 0) {
+		goto fail;
+	}
+
+	/* set initial delay duration: .5 second */
+	delay_duration.val1 = 0LL;
+	delay_duration.val2 = 500000000LL;
+	ret = lwm2m_engine_set_float64("3340/0/5521", &delay_duration);
 	if (ret < 0) {
 		goto fail;
 	}
