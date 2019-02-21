@@ -179,7 +179,7 @@ static int light_control_ws2812_color_cb(struct ipso_light_ctl *ilc,
 	bool on;
 	int ret;
 
-	ret = light_control_parse_rgb(color, color_len, color_rgb);
+	ret = light_control_parse_rgb(color, strlen(color), color_rgb);
 	if (ret) {
 		return ret;
 	}
