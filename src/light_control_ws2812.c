@@ -30,7 +30,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define DIMMER_INITIAL		25
 
 /* Is the light initially on? */
-#define ON_INITIAL              true
+#define ON_INITIAL              false
 
 struct ws2812_data {
 	struct device *ws2812;

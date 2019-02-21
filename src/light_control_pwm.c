@@ -30,6 +30,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 /* Initial dimmer value (%) */
 #define DIMMER_INITIAL	50
 
+/* Is the light initially on? */
+#define ON_INITIAL              false
+
 /* 100 is more than enough for it to be flicker free */
 #define PWM_PERIOD (USEC_PER_SEC / 100)
 
@@ -234,8 +237,8 @@ int light_control_pwm_post_init(struct ipso_light_ctl *ilc)
 		return ret;
 	}
 
-	/* Set initial light state based on DIMMER_INITIAL */
-	if (DIMMER_INITIAL) {
+	/* Set initial light state based on ON_INITIAL */
+	if (ON_INITIAL) {
 		ilc_set_onoff(ilc, true);
 	}
 
