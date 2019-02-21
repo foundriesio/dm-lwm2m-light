@@ -213,3 +213,15 @@ int light_control_flash(u8_t r, u8_t g, u8_t b, s32_t duration)
 	k_sem_give(&ilc_sem);
 	return ret;
 }
+
+#if defined(CONFIG_LWM2M_PERSIST_SETTINGS)
+void light_control_persist(void)
+{
+	/* save on/off state */
+	lwm2m_engine_set_persist("3311/0/5850");
+	/* save dimmer state */
+	lwm2m_engine_set_persist("3311/0/5851");
+	/* saver color */
+	lwm2m_engine_set_persist("3311/0/5706");
+}
+#endif

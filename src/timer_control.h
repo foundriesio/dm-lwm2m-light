@@ -8,5 +8,6 @@
 #define FOTA_TIMER_CONTROL_H__
 
 int init_timer_control(void);
+void timer_control_persist(void);
 
 #endif	/* FOTA_TIMER_CONTROL_H__ */

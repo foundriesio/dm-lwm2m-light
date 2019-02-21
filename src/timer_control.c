@@ -85,3 +85,16 @@ int init_timer_control(void)
 fail:
 	return ret;
 }
+
+#ifdef CONFIG_LWM2M_PERSIST_SETTINGS
+void timer_control_persist(void)
+{
+	/* Only turn on persist settings *AFTER* the defaults have been set */
+	/* save timer duration */
+	lwm2m_engine_set_persist("3340/0/5521");
+	/* save min. off time */
+	lwm2m_engine_set_persist("3340/0/5525");
+	/* save on/off state */
+	lwm2m_engine_set_persist("3340/0/5850");
+}
+#endif

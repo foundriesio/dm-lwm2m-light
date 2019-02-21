@@ -144,6 +144,10 @@ void main(void)
 
 	/* Load *all* persistent settings */
 	settings_load();
+	light_control_persist();
+#if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
+	timer_control_persist();
+#endif
 
 	TC_END_REPORT(TC_PASS);
 
