@@ -221,19 +221,27 @@ static int light_control_ws2812_flash(struct ipso_light_ctl *ilc,
 {
 	struct ws2812_data *data = ilc->data;
 	struct led_rgb cache;
-	u8_t dimmer;
+	u8_t dimmer = 0;
+	bool onoff;
 	int ret;
 
-	ret = ilc_get_dimmer(ilc, &dimmer);
+	ret = ilc_get_onoff(ilc, &onoff);
 	if (ret) {
 		return ret;
+	}
+
+	if (onoff) {
+		ret = ilc_get_dimmer(ilc, &dimmer);
+		if (ret) {
+			return ret;
+		}
 	}
 
 	memcpy(&cache, &data->color, sizeof(struct led_rgb));
 	data->color.r = r;
 	data->color.g = g;
 	data->color.b = b;
-	ret = light_control_ws2812_update(ilc, dimmer);
+	ret = light_control_ws2812_update(ilc, DIMMER_INITIAL);
 	if (ret) {
 		goto fail;
 	}
