@@ -16,12 +16,14 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <gpio.h>
 #include <net/lwm2m.h>
 #include <tc_util.h>
+#include <settings/settings.h>
 
 /* Local helpers and functions */
 #include "app_work_queue.h"
 #include "product_id.h"
 #include "lwm2m.h"
 #include "light_control.h"
+#include "settings.h"
 #if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
 #include "timer_control.h"
 #endif
@@ -99,7 +101,7 @@ void main(void)
 	app_wq_init();
 
 	LOG_INF("LWM2M Smart Light Bulb");
-	LOG_INF("Device: %s, Serial: %x",
+	LOG_INF("Device: %s, Serial: %08x",
 		product_id_get()->name, product_id_get()->number);
 
 	TC_START("Running Built in Self Test (BIST)");
@@ -122,7 +124,6 @@ void main(void)
 		return;
 	}
 	_TC_END_RESULT(TC_PASS, "init_light_control");
-	TC_END_REPORT(TC_PASS);
 
 #if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
 	TC_PRINT("Initializing IPSO Timer Control\n");
@@ -132,8 +133,19 @@ void main(void)
 		return;
 	}
 	_TC_END_RESULT(TC_PASS, "init_timer_control");
-	TC_END_REPORT(TC_PASS);
 #endif /* CONFIG_ENABLE_TIMER_OBJ */
+
+	TC_PRINT("Initializing FOTA settings\n");
+	if (fota_settings_init()) {
+		_TC_END_RESULT(TC_FAIL, "fota_settings_init");
+		TC_END_REPORT(TC_FAIL);
+	}
+	_TC_END_RESULT(TC_PASS, "fota_settings_init");
+
+	/* Load *all* persistent settings */
+	settings_load();
+
+	TC_END_REPORT(TC_PASS);
 
 	if (lwm2m_init(app_work_q)) {
 		return;
