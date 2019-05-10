@@ -40,8 +40,10 @@ endif # FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
-	select NET_IPV6
-	select NET_CONFIG_NEED_IPV6
+	select NET_IPV6 if !MODEM
+	select NET_CONFIG_NEED_IPV6 if !MODEM
+	select NET_IPV4 if MODEM
+	select NET_CONFIG_NEED_IPV4 if MODEM
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
@@ -70,7 +72,7 @@ if FOTA_DEVICE_SOC_SERIES_NRF52X
 config TEMP_NRF5_NAME
 	default "fota-temp"
 
-if !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
+if !NET_L2_OPENTHREAD && !NET_L2_IEEE802154 && !MODEM
 
 config BT
 	default y
@@ -88,16 +90,15 @@ config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
 	default y
 
 config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
-	default "coap://[fe80::d4e7:0:0:1]:5682"
-
-config NET_CONFIG_PEER_IPV6_ADDR
-	default "fe80::d4e7:0:0:1"
+	default "coap://[fd11:22::1]:5682" if NET_L2_OPENTHREAD
+	default "coap://[fd11:11::1]:5682"
 
 config NET_L2_BT
 	default y
 
+# Need time for RADVD settings
 config NET_CONFIG_INIT_TIMEOUT
-	default 0
+	default 30
 
 config BT_RX_BUF_COUNT
 	default 10
@@ -117,6 +118,18 @@ config BT_RX_STACK_SIZE
 config BT_L2CAP_TX_BUF_COUNT
 	default 6
 
+config BT_SMP
+	default y
+
+config BT_PERIPHERAL
+	default y
+
+config BT_CENTRAL
+	default y
+
+config BT_L2CAP_DYNAMIC_CHANNEL
+	default y
+
 # The following BT configs are not needed in peripheral mode.
 
 config BT_CTLR_CONN_PARAM_REQ
@@ -125,7 +138,7 @@ config BT_CTLR_CONN_PARAM_REQ
 config BT_CTLR_ADV_EXT
 	default n
 
-endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
+endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154 && !MODEM
 
 if APP_LIGHT_TYPE_WS2812
 
@@ -153,6 +166,11 @@ config NET_IF_MCAST_IPV6_ADDR_COUNT
 config NET_RX_STACK_SIZE
 	default 5120 if NET_L2_OPENTHREAD
 	default 2048
+
+config DNS_SERVER1
+	default "fd11:11::1" if BT
+	default "fd11:22::1" if NET_L2_OPENTHREAD
+	default "8.8.8.8"
 
 module = FOTA
 module-dep = LOG
