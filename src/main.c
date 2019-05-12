@@ -128,11 +128,11 @@ void main(void)
 #if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
 	TC_PRINT("Initializing IPSO Timer Control\n");
 	if (init_timer_control()) {
-		_TC_END_RESULT(TC_FAIL, "init_timer_control");
+		Z_TC_END_RESULT(TC_FAIL, "init_timer_control");
 		TC_END_REPORT(TC_FAIL);
 		return;
 	}
-	_TC_END_RESULT(TC_PASS, "init_timer_control");
+	Z_TC_END_RESULT(TC_PASS, "init_timer_control");
 #endif /* CONFIG_ENABLE_TIMER_OBJ */
 
 	TC_PRINT("Initializing FOTA settings\n");
