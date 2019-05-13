@@ -23,3 +23,31 @@
 		status = "ok";
 	};
 };
+
+&spi0 {
+	status = "ok";
+	sck-pin = <29>;
+	mosi-pin = <30>;
+	miso-pin = <31>;
+
+	ws2812@0 {
+		compatible = "worldsemi,ws2812";
+		reg = <0>;
+		spi-max-frequency = <5250000>;
+		label = "WS2812";
+	};
+};
+
+/ {
+	buttons {
+		compatible = "gpio-keys";
+		timerswitch: timer_switch {
+			gpios = <&gpio0 28 GPIO_DIR_OUT>;
+			label = "GPIO timer switch";
+		};
+	};
+
+	aliases {
+		dt-sw-timer0 = &timerswitch;
+	};
+};
