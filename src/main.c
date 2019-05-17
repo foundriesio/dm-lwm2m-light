@@ -143,10 +143,12 @@ void main(void)
 	Z_TC_END_RESULT(TC_PASS, "fota_settings_init");
 
 	/* Load *all* persistent settings */
+#if defined(CONFIG_LWM2M_PERSIST_SETTINGS)
 	settings_load();
 	light_control_persist();
 #if defined(CONFIG_APP_ENABLE_TIMER_OBJ)
 	timer_control_persist();
+#endif
 #endif
 
 	TC_END_REPORT(TC_PASS);
