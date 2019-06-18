@@ -38,6 +38,14 @@
 	};
 };
 
+&sw_pwm {
+	status = "ok";
+};
+
+&pwm0 {
+	status = "ok";
+};
+
 / {
 	buttons {
 		compatible = "gpio-keys";
